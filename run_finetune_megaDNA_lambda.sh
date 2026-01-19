@@ -8,6 +8,9 @@
 
 # Biowulf SLURM script for running phage/bacteria classification
 
+# Parse command line arguments
+SEED=${1:-42}  # Default seed is 42 if not provided
+
 # Load modules
 #module load python/3.9
 #module load cuda/11.3
@@ -19,13 +22,14 @@ DATA_DIR="/home/lindseylm/lindseylm/lambda_final/merged_datasets_filtered/2k"
 MODEL_PATH="megaDNA_phage_145M.pt"  # Update this path to where you put the model
 f="filtered"
 len="2k"
-OUTPUT_DIR="./output/lambda_filtered/2k/megaDNA_lambda_${f}_${len}_$(date +%Y%m%d_%H%M%S)"
+OUTPUT_DIR="./output/lambda_filtered/2k/megaDNA_lambda_${f}_${len}_seed${SEED}_$(date +%Y%m%d_%H%M%S)"
 
 # Create output directory
 mkdir -p $OUTPUT_DIR
 
 # Run classification with improved 3-layer neural network
 echo "Running embedding classifier with Improved 3-Layer Neural Network..."
+echo "Using seed: $SEED"
 python run_embedding_classifier.py \
     --data_dir $DATA_DIR \
     --model_path $MODEL_PATH \
@@ -42,13 +46,22 @@ python run_embedding_classifier.py \
     --weight_decay 1e-4 \
     --nn_batch_size 64 \
     --output_dir $OUTPUT_DIR \
+    --seed $SEED \
     2>&1 | tee $OUTPUT_DIR/run.log
 
 echo "Done! Results saved to: $OUTPUT_DIR"
 
 # To run this script on Biowulf:
-# 1. sbatch run_on_biowulf.sh
+# Usage: bash run_finetune_megaDNA_lambda.sh [SEED]
+# Examples:
+#   bash run_finetune_megaDNA_lambda.sh        # Uses default seed 42
+#   bash run_finetune_megaDNA_lambda.sh 123    # Uses seed 123
+#
+# To run with multiple seeds:
+#   for seed in 1 2 3 4 5 6 7 8 9 10; do
+#       sbatch run_finetune_megaDNA_lambda.sh $seed
+#   done
 #
 # To run interactively (for testing):
 # 1. sinteractive --gres=gpu:v100:1 --mem=32G
-# 2. bash run_on_biowulf.sh
+# 2. bash run_finetune_megaDNA_lambda.sh [SEED]

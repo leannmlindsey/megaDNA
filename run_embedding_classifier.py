@@ -19,9 +19,15 @@ import pandas as pd
 import numpy as np
 import pickle
 import argparse
+import random
+import time
 from pathlib import Path
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report, roc_auc_score, confusion_matrix, silhouette_score, silhouette_samples
+from sklearn.metrics import (
+    accuracy_score, classification_report, roc_auc_score, confusion_matrix,
+    silhouette_score, silhouette_samples, matthews_corrcoef,
+    precision_recall_fscore_support
+)
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
 from tqdm import tqdm
@@ -30,6 +36,18 @@ import matplotlib
 matplotlib.use('Agg')  # Non-interactive backend for server use
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+
+
+def set_seed(seed):
+    """Set random seeds for reproducibility."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
 
 def encode_sequence(sequence, nt_vocab=['**', 'A', 'T', 'C', 'G', '#']):
@@ -369,7 +387,7 @@ def compute_and_plot_silhouette(X, y, output_dir, split_name='test', class_names
     }
 
 
-def visualize_embeddings(X, y, output_dir, split_name='test', class_names=['Bacteria', 'Phage']):
+def visualize_embeddings(X, y, output_dir, split_name='test', class_names=['Bacteria', 'Phage'], seed=42):
     """
     Create PCA and t-SNE visualizations of embeddings.
 
@@ -379,6 +397,7 @@ def visualize_embeddings(X, y, output_dir, split_name='test', class_names=['Bact
         output_dir: Directory to save plots
         split_name: Name of the split
         class_names: Names of the classes
+        seed: Random seed for t-SNE reproducibility
     """
     print(f"\nCreating embedding visualizations for {split_name} set...")
 
@@ -410,7 +429,7 @@ def visualize_embeddings(X, y, output_dir, split_name='test', class_names=['Bact
 
     # t-SNE visualization
     print("Running t-SNE (this may take a minute)...")
-    tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(X)-1))
+    tsne = TSNE(n_components=2, random_state=seed, perplexity=min(30, len(X)-1))
     X_tsne = tsne.fit_transform(X)
 
     fig, ax = plt.subplots(figsize=(10, 8))
@@ -562,9 +581,13 @@ def main(args):
     print("Phage/Bacteria Classification - Approach 1: Embedding Classifier")
     print("="*70)
 
+    # Set random seed for reproducibility
+    set_seed(args.seed)
+    print(f"\nRandom seed: {args.seed}")
+
     # Set device
     device = 'cuda' if torch.cuda.is_available() and not args.cpu else 'cpu'
-    print(f"\nUsing device: {device}")
+    print(f"Using device: {device}")
 
     # Load data
     print("\n" + "="*70)
@@ -651,7 +674,7 @@ def main(args):
         print("Training Logistic Regression classifier...")
         classifier = LogisticRegression(
             max_iter=1000,
-            random_state=42,
+            random_state=args.seed,
             class_weight='balanced',
             verbose=1
         )
@@ -695,6 +718,9 @@ def main(args):
     print("Step 5: Evaluation Results")
     print("="*70)
 
+    # Time the evaluation
+    eval_start_time = time.time()
+
     print("\nDevelopment Set Results:")
     print("-" * 70)
     dev_acc = accuracy_score(y_dev, y_dev_pred)
@@ -709,10 +735,49 @@ def main(args):
     print("\n" + "="*70)
     print("Test Set Results:")
     print("-" * 70)
+
+    # Calculate comprehensive metrics for test set
     test_acc = accuracy_score(y_test, y_test_pred)
     test_auc = roc_auc_score(y_test, y_test_proba)
-    print(f"Accuracy:  {test_acc:.4f}")
-    print(f"ROC-AUC:   {test_auc:.4f}")
+    test_mcc = matthews_corrcoef(y_test, y_test_pred)
+
+    # Get precision, recall, f1 for the positive class (phage = 1)
+    precision, recall, f1, _ = precision_recall_fscore_support(
+        y_test, y_test_pred, average='binary', pos_label=1
+    )
+
+    # Calculate sensitivity and specificity from confusion matrix
+    tn, fp, fn, tp = confusion_matrix(y_test, y_test_pred).ravel()
+    sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0.0  # Same as recall
+    specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
+
+    # Calculate loss (binary cross-entropy)
+    epsilon = 1e-15  # To avoid log(0)
+    y_test_proba_clipped = np.clip(y_test_proba, epsilon, 1 - epsilon)
+    test_loss = -np.mean(
+        y_test * np.log(y_test_proba_clipped) +
+        (1 - y_test) * np.log(1 - y_test_proba_clipped)
+    )
+
+    eval_runtime = time.time() - eval_start_time
+    eval_samples_per_second = len(y_test) / eval_runtime if eval_runtime > 0 else 0
+
+    # For neural network, calculate steps per second based on batch size
+    if args.classifier_type == 'neural':
+        n_eval_steps = (len(y_test) + args.nn_batch_size - 1) // args.nn_batch_size
+    else:
+        n_eval_steps = 1
+    eval_steps_per_second = n_eval_steps / eval_runtime if eval_runtime > 0 else 0
+
+    print(f"Accuracy:    {test_acc:.4f}")
+    print(f"Precision:   {precision:.4f}")
+    print(f"Recall:      {recall:.4f}")
+    print(f"F1 Score:    {f1:.4f}")
+    print(f"MCC:         {test_mcc:.4f}")
+    print(f"Sensitivity: {sensitivity:.4f}")
+    print(f"Specificity: {specificity:.4f}")
+    print(f"ROC-AUC:     {test_auc:.4f}")
+    print(f"Loss:        {test_loss:.4f}")
     print("\nConfusion Matrix:")
     print(confusion_matrix(y_test, y_test_pred))
     print("\nClassification Report:")
@@ -733,7 +798,7 @@ def main(args):
 
     # Create embedding visualizations for test set
     visualization_data = visualize_embeddings(
-        X_test, y_test, output_dir, split_name='test'
+        X_test, y_test, output_dir, split_name='test', seed=args.seed
     )
 
     # Save results
@@ -773,12 +838,42 @@ def main(args):
         )
         print(f"Predictions saved to: {predictions_path}")
 
-        # Save metrics
+        # Save test_results.json in standard format (matching other models)
+        test_results = {
+            'eval_loss': float(test_loss),
+            'eval_accuracy': float(test_acc),
+            'eval_precision': float(precision),
+            'eval_recall': float(recall),
+            'eval_f1': float(f1),
+            'eval_mcc': float(test_mcc),
+            'eval_sensitivity': float(sensitivity),
+            'eval_specificity': float(specificity),
+            'eval_auc': float(test_auc),
+            'eval_runtime': float(eval_runtime),
+            'eval_samples_per_second': float(eval_samples_per_second),
+            'eval_steps_per_second': float(eval_steps_per_second),
+            'epoch': args.epochs if args.classifier_type == 'neural' else 1,
+            'seed': args.seed,
+            'silhouette_score': silhouette_metrics['overall_score'],
+            'silhouette_per_class': silhouette_metrics['per_class_stats'],
+            'image_files': {
+                'silhouette_plot': str(output_dir / 'silhouette_plot_test.png'),
+                'pca_visualization': str(output_dir / 'pca_visualization_test.png'),
+                'tsne_visualization': str(output_dir / 'tsne_visualization_test.png')
+            }
+        }
+        test_results_path = output_dir / 'test_results.json'
+        with open(test_results_path, 'w') as f:
+            json.dump(test_results, f, indent=2)
+        print(f"Test results saved to: {test_results_path}")
+
+        # Save detailed metrics (including dev set and config)
         config_dict = {
             'classifier_type': args.classifier_type,
             'pooling': args.pooling,
             'layer': args.layer,
-            'batch_size': args.batch_size
+            'batch_size': args.batch_size,
+            'seed': args.seed
         }
 
         # Add neural network specific config if applicable
@@ -801,7 +896,14 @@ def main(args):
             },
             'test': {
                 'accuracy': float(test_acc),
+                'precision': float(precision),
+                'recall': float(recall),
+                'f1': float(f1),
+                'mcc': float(test_mcc),
+                'sensitivity': float(sensitivity),
+                'specificity': float(specificity),
                 'roc_auc': float(test_auc),
+                'loss': float(test_loss),
                 'silhouette_score': silhouette_metrics['overall_score'],
                 'silhouette_per_class': silhouette_metrics['per_class_stats']
             },
@@ -810,7 +912,7 @@ def main(args):
         metrics_path = output_dir / 'metrics.json'
         with open(metrics_path, 'w') as f:
             json.dump(metrics, f, indent=2)
-        print(f"Metrics saved to: {metrics_path}")
+        print(f"Detailed metrics saved to: {metrics_path}")
 
         # Save detailed silhouette analysis
         silhouette_path = output_dir / 'silhouette_analysis.json'
@@ -827,7 +929,10 @@ def main(args):
     print("\n" + "="*70)
     print("Done!")
     print("="*70)
-    print("\nGenerated visualizations:")
+    print(f"\nRandom seed used: {args.seed}")
+    print("\nGenerated files:")
+    print(f"  - Test results: {output_dir / 'test_results.json'}")
+    print(f"  - Detailed metrics: {output_dir / 'metrics.json'}")
     print(f"  - Silhouette plot: {output_dir / 'silhouette_plot_test.png'}")
     print(f"  - PCA visualization: {output_dir / 'pca_visualization_test.png'}")
     print(f"  - t-SNE visualization: {output_dir / 'tsne_visualization_test.png'}")
@@ -886,6 +991,10 @@ if __name__ == "__main__":
     # Caching arguments
     parser.add_argument('--no_cache', action='store_true',
                        help='Disable embedding caching (force re-extraction)')
+
+    # Reproducibility arguments
+    parser.add_argument('--seed', type=int, default=42,
+                       help='Random seed for reproducibility (default: 42)')
 
     args = parser.parse_args()
 
