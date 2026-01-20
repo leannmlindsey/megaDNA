@@ -500,7 +500,7 @@ def train_neural_classifier(X_train, y_train, X_val, y_val,
 
     # Learning rate scheduler - reduce on plateau
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode='min', factor=0.5, patience=10, verbose=True
+        optimizer, mode='min', factor=0.5, patience=10
     )
 
     # Convert to tensors
@@ -600,7 +600,7 @@ def main(args):
     print("Step 2: Loading MegaDNA Model")
     print("="*70)
     print(f"Loading model from: {args.model_path}")
-    megadna_model = torch.load(args.model_path, map_location=torch.device(device))
+    megadna_model = torch.load(args.model_path, map_location=torch.device(device), weights_only=False)
     megadna_model.eval()
     print("Model loaded successfully!")
 
@@ -752,12 +752,19 @@ def main(args):
     specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
 
     # Calculate loss (binary cross-entropy)
-    epsilon = 1e-15  # To avoid log(0)
-    y_test_proba_clipped = np.clip(y_test_proba, epsilon, 1 - epsilon)
+    # Handle potential NaN values and use larger epsilon for numerical stability
+    epsilon = 1e-7
+    y_test_proba_clean = np.nan_to_num(y_test_proba, nan=0.5, posinf=1.0, neginf=0.0)
+    y_test_proba_clipped = np.clip(y_test_proba_clean, epsilon, 1 - epsilon)
     test_loss = -np.mean(
         y_test * np.log(y_test_proba_clipped) +
         (1 - y_test) * np.log(1 - y_test_proba_clipped)
     )
+
+    # Warn if there were NaN values
+    n_nan = np.sum(np.isnan(y_test_proba))
+    if n_nan > 0:
+        print(f"Warning: {n_nan} NaN values found in predictions, replaced with 0.5")
 
     eval_runtime = time.time() - eval_start_time
     eval_samples_per_second = len(y_test) / eval_runtime if eval_runtime > 0 else 0

@@ -38,7 +38,7 @@ python run_embedding_classifier.py \
     --pooling mean \
     --batch_size 8 \
     --epochs 200 \
-    --lr 0.001 \
+    --lr 0.0001 \
     --hidden_dim1 512 \
     --hidden_dim2 256 \
     --hidden_dim3 128 \
