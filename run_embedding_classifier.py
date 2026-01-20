@@ -26,7 +26,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     accuracy_score, classification_report, roc_auc_score, confusion_matrix,
     silhouette_score, silhouette_samples, matthews_corrcoef,
-    precision_recall_fscore_support
+    precision_recall_fscore_support, log_loss
 )
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
@@ -751,15 +751,11 @@ def main(args):
     sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0.0  # Same as recall
     specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
 
-    # Calculate loss (binary cross-entropy)
-    # Handle potential NaN values and use larger epsilon for numerical stability
-    epsilon = 1e-7
+    # Calculate loss (binary cross-entropy) using sklearn for numerical stability
+    # Handle potential NaN/inf values
     y_test_proba_clean = np.nan_to_num(y_test_proba, nan=0.5, posinf=1.0, neginf=0.0)
-    y_test_proba_clipped = np.clip(y_test_proba_clean, epsilon, 1 - epsilon)
-    test_loss = -np.mean(
-        y_test * np.log(y_test_proba_clipped) +
-        (1 - y_test) * np.log(1 - y_test_proba_clipped)
-    )
+    y_test_proba_clean = np.clip(y_test_proba_clean, 1e-7, 1 - 1e-7)
+    test_loss = log_loss(y_test, y_test_proba_clean)
 
     # Warn if there were NaN values
     n_nan = np.sum(np.isnan(y_test_proba))
