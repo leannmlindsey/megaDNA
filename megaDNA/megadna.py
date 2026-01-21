@@ -113,13 +113,15 @@ class MEGADNA(MEGABYTE):
 
         prev_stage_tokens_repr = None
         hidden_states = []
+        pack_shapes = []  # Track pack shapes for unpacking embeddings
 
-        # spatial tokens is tokens with depth pos reduced along depth dimension + spatial positions        
+        # spatial tokens is tokens with depth pos reduced along depth dimension + spatial positions
 
         for stage_start_tokens, stage_tokens, transformer, proj in zip(self.start_tokens, tokens_at_stages, self.transformers, self.to_next_transformer_projections):
             # print(f" starge start token shape is {stage_start_tokens.shape}")
             # print(f" stage token shape is {stage_tokens.shape}")
             stage_tokens, ps = pack_one(stage_tokens, '* n d')
+            pack_shapes.append(ps)  # Store pack shape for this stage
             stage_start_tokens = repeat(stage_start_tokens, 'f -> b 1 f', b = stage_tokens.shape[0])
 
             # concat start token
@@ -144,7 +146,11 @@ class MEGADNA(MEGABYTE):
             prev_stage_tokens_repr = proj(attended[..., :-1, :])
 
         if return_value == 'embedding':
-            return hidden_states
+            # Unpack hidden states to restore proper batch dimension
+            unpacked_hidden_states = []
+            for hs, ps in zip(hidden_states, pack_shapes):
+                unpacked_hidden_states.append(unpack_one(hs, ps, '* n d'))
+            return unpacked_hidden_states
             
         # project to logits
 

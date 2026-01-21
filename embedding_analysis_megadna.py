@@ -302,35 +302,39 @@ def extract_embeddings(
         input_tensor = torch.tensor(padded_seqs, dtype=torch.long).to(device)
 
         with torch.no_grad():
-            # Get embeddings - returns list of 3 layers
+            # Get embeddings - returns list of 3 layers (now unpacked)
             embeddings_list = model(input_tensor, return_value='embedding')
 
             # embeddings_list[0]: global layer (512 dims)
             # embeddings_list[1]: middle layer (256 dims)
             # embeddings_list[2]: local layer (196 dims)
+            # Each tensor has shape (batch, [hierarchical dims...], seq_len, dim)
+
+            def pool_layer(layer_emb, pooling_method):
+                """Pool over all dimensions except batch and embedding dim."""
+                # Flatten all middle dimensions: (batch, ..., dim) -> (batch, -1, dim)
+                batch_size = layer_emb.shape[0]
+                embed_dim = layer_emb.shape[-1]
+                layer_emb_flat = layer_emb.reshape(batch_size, -1, embed_dim)
+
+                if pooling_method == 'mean':
+                    return layer_emb_flat.mean(dim=1)
+                elif pooling_method == 'max':
+                    return layer_emb_flat.max(dim=1)[0]
+                elif pooling_method == 'cls':
+                    return layer_emb_flat[:, 0, :]
 
             if layer == 'all':
                 # Concatenate all layers after pooling
                 pooled_layers = []
                 for layer_emb in embeddings_list:
-                    if pooling == 'mean':
-                        pooled = layer_emb.mean(dim=1)
-                    elif pooling == 'max':
-                        pooled = layer_emb.max(dim=1)[0]
-                    elif pooling == 'cls':
-                        pooled = layer_emb[:, 0, :]
+                    pooled = pool_layer(layer_emb, pooling)
                     pooled_layers.append(pooled)
                 embeddings = torch.cat(pooled_layers, dim=-1)
             else:
                 layer_idx = layer_map[layer]
                 layer_emb = embeddings_list[layer_idx]
-
-                if pooling == 'mean':
-                    embeddings = layer_emb.mean(dim=1)
-                elif pooling == 'max':
-                    embeddings = layer_emb.max(dim=1)[0]
-                elif pooling == 'cls':
-                    embeddings = layer_emb[:, 0, :]
+                embeddings = pool_layer(layer_emb, pooling)
 
             all_embeddings.append(embeddings.cpu().numpy())
             all_labels.extend(batch_labels)
