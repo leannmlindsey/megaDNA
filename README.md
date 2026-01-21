@@ -78,6 +78,102 @@ print(output)
 ### In silico mutagenesis analysis
 Please check our jupyter notebook: [megaDNA_mutagenesis.ipynb](https://github.com/lingxusb/megaDNA/blob/main/notebook/megaDNA_mutagenesis.ipynb). Fasta file and gene annotation for lambda phage can be downloaded from https://www.ncbi.nlm.nih.gov/nuccore/NC_001416.1
 
+---
+
+## Embedding Analysis for Binary Classification
+
+This repository includes tools for evaluating megaDNA embeddings on custom binary classification tasks using simple CSV files.
+
+### Prepare Your Data
+
+Create a directory containing three CSV files with `sequence` and `label` columns:
+
+```
+my_dataset/
+├── train.csv
+├── dev.csv    # (or val.csv)
+└── test.csv
+```
+
+Each CSV should have this format:
+```csv
+sequence,label
+ACGTACGTACGT...,0
+TGCATGCATGCA...,1
+```
+
+### Run Embedding Analysis
+
+```bash
+python embedding_analysis_megadna.py \
+    --csv_dir="/path/to/csv/data" \
+    --model_path="/path/to/megaDNA_phage_145M.pt" \
+    --output_dir="./results/embedding_analysis" \
+    --layer="middle" \
+    --pooling="mean"
+```
+
+### Embedding Layers
+
+megaDNA provides three embedding layers capturing different context lengths:
+
+| Layer | Dimensions | Context |
+|-------|:----------:|---------|
+| `local` | 196 | 16 bp |
+| `middle` | 256 | 1024 bp |
+| `global` | 512 | 96K bp |
+| `all` | 964 | All concatenated |
+
+### Outputs
+
+- `embeddings_pretrained.npz`: Extracted embeddings for train/val/test sets
+- `pca_visualization_pretrained.png`: PCA plot showing class separation
+- `test_predictions_pretrained.csv`: Predictions with probabilities
+- `three_layer_nn_pretrained.pt`: Trained 3-layer NN model
+- `embedding_analysis_results.json`: All metrics in JSON format
+
+### Metrics Generated
+
+**Linear Probe (Logistic Regression):**
+- Accuracy, Precision, Recall, F1
+- MCC (Matthews Correlation Coefficient)
+- AUC (Area Under ROC Curve)
+- Sensitivity, Specificity
+
+**3-Layer Neural Network:**
+- Same metrics as linear probe
+
+**Embedding Quality:**
+- Silhouette Score: [-1, 1] range, measures cluster separation
+- PCA Variance Explained: How much variance PC1 and PC2 capture
+
+### Random Baseline Comparison
+
+To measure the contribution of pretraining, compare against a randomly initialized model:
+
+```bash
+python embedding_analysis_megadna.py \
+    --csv_dir="/path/to/csv/data" \
+    --model_path="/path/to/megaDNA_phage_145M.pt" \
+    --output_dir="./results/embedding_analysis" \
+    --include_random_baseline
+```
+
+### SLURM Scripts (for HPC)
+
+SLURM scripts are provided in `slurm_scripts/` for running on HPC clusters (configured for NIH Biowulf):
+
+```bash
+# 1. Edit configuration in slurm_scripts/wrapper_run_embedding_analysis.sh
+# 2. Submit job:
+bash slurm_scripts/wrapper_run_embedding_analysis.sh
+
+# For interactive testing (no sbatch):
+bash slurm_scripts/run_embedding_analysis_interactive.sh
+```
+
+---
+
 ### Reference
 - [A long-context language model for deciphering and generating bacteriophage genomes](https://www.biorxiv.org/content/10.1101/2023.12.18.572218v3)
 - [MEGABYTE: Predicting Million-byte Sequences with Multiscale Transformers](https://arxiv.org/abs/2305.07185)
