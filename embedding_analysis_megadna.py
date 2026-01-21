@@ -238,10 +238,12 @@ def create_random_model(model_path: str, device: torch.device, seed: int = 42):
         max_seq_len=(512, 64, 16),
     )
 
+    # Convert to half precision (float16) - required for MEGABYTE attention kernels
+    model = model.half()
     model = model.to(device)
     model.eval()
 
-    print("  Model initialized with random weights")
+    print("  Model initialized with random weights (float16)")
 
     # Clean up
     del pretrained
