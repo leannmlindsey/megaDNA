@@ -174,6 +174,65 @@ bash slurm_scripts/run_embedding_analysis_interactive.sh
 
 ---
 
+## Inference
+
+Run inference on a CSV file using a trained megaDNA classifier to get predictions with probability scores.
+
+### Run Inference
+
+```bash
+python inference_megadna.py \
+    --input_csv="/path/to/test.csv" \
+    --model_path="/path/to/megaDNA_phage_145M.pt" \
+    --classifier_path="/path/to/classifier.pt" \
+    --output_csv="/path/to/predictions.csv" \
+    --layer="middle" \
+    --pooling="mean" \
+    --threshold=0.5 \
+    --save_metrics
+```
+
+### Required Files
+
+1. **megaDNA model** (`--model_path`): The pretrained megaDNA checkpoint (.pt file)
+2. **Trained classifier** (`--classifier_path`): Either:
+   - Neural network: `.pt` file from embedding analysis (`three_layer_nn_pretrained.pt`)
+   - Logistic regression: `.pkl` file
+
+### Input Format
+
+CSV file with at least a `sequence` column. If `label` column is present, metrics will be computed.
+
+```csv
+sequence,label
+ACGTACGTACGT...,0
+TGCATGCATGCA...,1
+```
+
+### Output Format
+
+CSV file with predictions and probabilities:
+- `sequence`: Original sequence
+- `label`: Original label (if present)
+- `prob_0`: Probability of class 0
+- `prob_1`: Probability of class 1
+- `pred_label`: Predicted label
+
+If `--save_metrics` is specified and labels are present, a `_metrics.json` file is also saved.
+
+### SLURM Scripts for Inference
+
+```bash
+# 1. Edit configuration in slurm_scripts/wrapper_run_inference.sh
+# 2. Submit job:
+bash slurm_scripts/wrapper_run_inference.sh
+
+# For interactive testing (no sbatch):
+bash slurm_scripts/run_inference_interactive.sh
+```
+
+---
+
 ### Reference
 - [A long-context language model for deciphering and generating bacteriophage genomes](https://www.biorxiv.org/content/10.1101/2023.12.18.572218v3)
 - [MEGABYTE: Predicting Million-byte Sequences with Multiscale Transformers](https://arxiv.org/abs/2305.07185)
