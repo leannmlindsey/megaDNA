@@ -37,8 +37,7 @@ fi
 # Activate conda environment
 source activate megadna
 
-# Ignore user site-packages
-export PYTHONNOUSERSITE=1
+# Note: Removed PYTHONNOUSERSITE=1 to allow ~/.local packages
 
 # Check GPU
 echo ""
