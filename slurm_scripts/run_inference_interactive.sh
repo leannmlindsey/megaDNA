@@ -46,8 +46,6 @@ fi
 # Activate conda environment
 source activate megadna
 
-# Note: Removed PYTHONNOUSERSITE=1 to allow ~/.local packages
-
 # Check GPU availability
 echo ""
 echo "GPU Information:"
@@ -61,8 +59,6 @@ echo ""
 # Set defaults
 BATCH_SIZE=${BATCH_SIZE:-8}
 MAX_LENGTH=${MAX_LENGTH:-96000}
-POOLING=${POOLING:-mean}
-LAYER=${LAYER:-middle}
 THRESHOLD=${THRESHOLD:-0.5}
 
 # Validate required parameters
@@ -73,11 +69,6 @@ fi
 
 if [ -z "${MODEL_PATH}" ]; then
     echo "ERROR: MODEL_PATH is not set"
-    exit 1
-fi
-
-if [ -z "${CLASSIFIER_PATH}" ]; then
-    echo "ERROR: CLASSIFIER_PATH is not set"
     exit 1
 fi
 
@@ -95,14 +86,11 @@ echo ""
 echo "============================================================"
 echo "Configuration:"
 echo "============================================================"
-echo "  megaDNA Model: ${MODEL_PATH}"
-echo "  Classifier: ${CLASSIFIER_PATH}"
+echo "  Fine-tuned Model: ${MODEL_PATH}"
 echo "  Input CSV: ${INPUT_CSV}"
 echo "  Output CSV: ${OUTPUT_CSV}"
 echo "  Batch size: ${BATCH_SIZE}"
 echo "  Max length: ${MAX_LENGTH}"
-echo "  Pooling: ${POOLING}"
-echo "  Layer: ${LAYER}"
 echo "  Threshold: ${THRESHOLD}"
 echo "============================================================"
 echo ""
@@ -111,12 +99,9 @@ echo ""
 python inference_megadna.py \
     --input_csv="${INPUT_CSV}" \
     --model_path="${MODEL_PATH}" \
-    --classifier_path="${CLASSIFIER_PATH}" \
     --output_csv="${OUTPUT_CSV}" \
     --batch_size=${BATCH_SIZE} \
     --max_length=${MAX_LENGTH} \
-    --pooling="${POOLING}" \
-    --layer="${LAYER}" \
     --threshold=${THRESHOLD} \
     --save_metrics
 

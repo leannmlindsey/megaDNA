@@ -70,13 +70,8 @@ if [ "${OUTPUT_DIR}" == "/path/to/output_directory" ] || [ -z "${OUTPUT_DIR}" ];
     exit 1
 fi
 
-if [ "${MODEL_PATH}" == "/path/to/megaDNA_phage_145M.pt" ] || [ -z "${MODEL_PATH}" ]; then
+if [ "${MODEL_PATH}" == "/path/to/finetuned_model.pt" ] || [ -z "${MODEL_PATH}" ]; then
     echo "ERROR: MODEL_PATH is not set properly in wrapper"
-    exit 1
-fi
-
-if [ "${CLASSIFIER_PATH}" == "/path/to/classifier.pt" ] || [ -z "${CLASSIFIER_PATH}" ]; then
-    echo "ERROR: CLASSIFIER_PATH is not set properly in wrapper"
     exit 1
 fi
 
@@ -92,8 +87,6 @@ mkdir -p "${OUTPUT_DIR}"
 # Set defaults
 BATCH_SIZE=${BATCH_SIZE:-8}
 MAX_LENGTH=${MAX_LENGTH:-96000}
-POOLING=${POOLING:-mean}
-LAYER=${LAYER:-middle}
 THRESHOLD=${THRESHOLD:-0.5}
 
 echo ""
@@ -102,12 +95,9 @@ echo "Configuration:"
 echo "============================================================"
 echo "  Input list: ${INPUT_LIST}"
 echo "  Output dir: ${OUTPUT_DIR}"
-echo "  megaDNA Model: ${MODEL_PATH}"
-echo "  Classifier: ${CLASSIFIER_PATH}"
+echo "  Fine-tuned Model: ${MODEL_PATH}"
 echo "  Batch size: ${BATCH_SIZE}"
 echo "  Max length: ${MAX_LENGTH}"
-echo "  Pooling: ${POOLING}"
-echo "  Layer: ${LAYER}"
 echo "  Threshold: ${THRESHOLD}"
 echo "============================================================"
 echo ""
@@ -147,12 +137,9 @@ while IFS= read -r INPUT_CSV || [ -n "${INPUT_CSV}" ]; do
     python inference_megadna.py \
         --input_csv="${INPUT_CSV}" \
         --model_path="${MODEL_PATH}" \
-        --classifier_path="${CLASSIFIER_PATH}" \
         --output_csv="${OUTPUT_CSV}" \
         --batch_size=${BATCH_SIZE} \
         --max_length=${MAX_LENGTH} \
-        --pooling="${POOLING}" \
-        --layer="${LAYER}" \
         --threshold=${THRESHOLD} \
         --save_metrics
 

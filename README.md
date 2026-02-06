@@ -80,9 +80,12 @@ Please check our jupyter notebook: [megaDNA_mutagenesis.ipynb](https://github.co
 
 ---
 
-## Embedding Analysis for Binary Classification
+## Binary Classification Pipeline
 
-This repository includes tools for evaluating megaDNA embeddings on custom binary classification tasks using simple CSV files.
+megaDNA is a causal (generative) model, so instead of fine-tuning, classification is done by:
+1. Extracting embeddings from the pretrained backbone
+2. Training a lightweight classifier (linear probe + 3-layer NN) on those embeddings
+3. Running inference with the saved classifier
 
 ### Prepare Your Data
 
@@ -102,20 +105,9 @@ ACGTACGTACGT...,0
 TGCATGCATGCA...,1
 ```
 
-### Run Embedding Analysis
-
-```bash
-python embedding_analysis_megadna.py \
-    --csv_dir="/path/to/csv/data" \
-    --model_path="/path/to/megaDNA_phage_145M.pt" \
-    --output_dir="./results/embedding_analysis" \
-    --layer="middle" \
-    --pooling="mean"
-```
-
 ### Embedding Layers
 
-megaDNA provides three embedding layers capturing different context lengths:
+megaDNA has three transformer layers capturing different context lengths:
 
 | Layer | Dimensions | Context |
 |-------|:----------:|---------|
@@ -124,110 +116,127 @@ megaDNA provides three embedding layers capturing different context lengths:
 | `global` | 512 | 96K bp |
 | `all` | 964 | All concatenated |
 
-### Outputs
+---
 
-- `embeddings_pretrained.npz`: Extracted embeddings for train/val/test sets
-- `pca_visualization_pretrained.png`: PCA plot showing class separation
-- `test_predictions_pretrained.csv`: Predictions with probabilities
-- `three_layer_nn_pretrained.pt`: Trained 3-layer NN model
-- `embedding_analysis_results.json`: All metrics in JSON format
+### Step 1: Embedding Analysis (train classifiers)
 
-### Metrics Generated
-
-**Linear Probe (Logistic Regression):**
-- Accuracy, Precision, Recall, F1
-- MCC (Matthews Correlation Coefficient)
-- AUC (Area Under ROC Curve)
-- Sensitivity, Specificity
-
-**3-Layer Neural Network:**
-- Same metrics as linear probe
-
-**Embedding Quality:**
-- Silhouette Score: [-1, 1] range, measures cluster separation
-- PCA Variance Explained: How much variance PC1 and PC2 capture
-
-### Random Baseline Comparison
-
-To measure the contribution of pretraining, compare against a randomly initialized model:
+Extract embeddings, train a linear probe and a 3-layer NN, and evaluate embedding quality.
 
 ```bash
 python embedding_analysis_megadna.py \
-    --csv_dir="/path/to/csv/data" \
-    --model_path="/path/to/megaDNA_phage_145M.pt" \
-    --output_dir="./results/embedding_analysis" \
-    --include_random_baseline
+    --csv_dir /path/to/csv/data \
+    --model_path /path/to/megaDNA_phage_145M.pt \
+    --output_dir ./results/embedding_analysis \
+    --layer middle \
+    --pooling mean
 ```
 
-### SLURM Scripts (for HPC)
+**All options:**
 
-SLURM scripts are provided in `slurm_scripts/` for running on HPC clusters (configured for NIH Biowulf):
+| Argument | Default | Description |
+| -------- | ------- | ----------- |
+| `--csv_dir` | (required) | Directory containing train.csv, dev.csv/val.csv, test.csv |
+| `--model_path` | (required) | Path to pretrained megaDNA checkpoint (.pt file) |
+| `--output_dir` | `./results/embedding_analysis` | Base output directory |
+| `--layer` | `middle` | Embedding layer: `local`, `middle`, `global`, or `all` |
+| `--pooling` | `mean` | Pooling strategy: `mean`, `max`, or `cls` |
+| `--batch_size` | 8 | Batch size for embedding extraction |
+| `--max_length` | 96000 | Max sequence length in bp |
+| `--nn_epochs` | 100 | Training epochs for the 3-layer NN |
+| `--nn_hidden_dim` | 256 | Hidden dimension for the 3-layer NN |
+| `--nn_lr` | 0.001 | Learning rate for the 3-layer NN |
+| `--seed` | 42 | Random seed |
+| `--include_random_baseline` | off | Also evaluate a randomly initialized model for comparison |
+
+**Outputs (saved to `output_dir`):**
+
+| File | Description |
+| ---- | ----------- |
+| `embeddings_pretrained.npz` | Cached embeddings (reused on re-run) |
+| `three_layer_nn_pretrained.pt` | Trained 3-layer NN checkpoint |
+| `three_layer_nn_pretrained_scaler.pkl` | StandardScaler used to normalize embeddings |
+| `test_predictions_pretrained.csv` | Test set predictions from both classifiers |
+| `pca_visualization_pretrained.png` | PCA plot showing class separation |
+| `embedding_analysis_results.json` | All metrics (accuracy, F1, MCC, AUC, silhouette, etc.) |
+
+To compare against a randomly initialized baseline:
 
 ```bash
-# 1. Edit configuration in slurm_scripts/wrapper_run_embedding_analysis.sh
-# 2. Submit job:
-bash slurm_scripts/wrapper_run_embedding_analysis.sh
-
-# For interactive testing (no sbatch):
-bash slurm_scripts/run_embedding_analysis_interactive.sh
+python embedding_analysis_megadna.py \
+    --csv_dir /path/to/csv/data \
+    --model_path /path/to/megaDNA_phage_145M.pt \
+    --include_random_baseline
 ```
 
 ---
 
-## Inference
+### Step 2: Inference (classify new sequences)
 
-Run inference on a CSV file using a trained megaDNA classifier to get predictions with probability scores.
+Use the trained 3-layer NN classifier from Step 1 to classify new sequences. This requires three files from the embedding analysis output:
+- The megaDNA backbone (`--model_path`)
+- The trained NN classifier (`--classifier_path`)
+- The saved scaler (`--scaler_path`)
 
-### Run Inference
+**Important:** `--layer` and `--pooling` must match the values used in Step 1.
 
 ```bash
 python inference_megadna.py \
-    --input_csv="/path/to/test.csv" \
-    --model_path="/path/to/megaDNA_phage_145M.pt" \
-    --classifier_path="/path/to/classifier.pt" \
-    --output_csv="/path/to/predictions.csv" \
-    --layer="middle" \
-    --pooling="mean" \
-    --threshold=0.5 \
+    --input_csv /path/to/test.csv \
+    --model_path /path/to/megaDNA_phage_145M.pt \
+    --classifier_path ./results/embedding_analysis/three_layer_nn_pretrained.pt \
+    --scaler_path ./results/embedding_analysis/three_layer_nn_pretrained_scaler.pkl \
+    --layer middle \
+    --pooling mean \
     --save_metrics
 ```
 
-### Required Files
+**All options:**
 
-1. **megaDNA model** (`--model_path`): The pretrained megaDNA checkpoint (.pt file)
-2. **Trained classifier** (`--classifier_path`): Either:
-   - Neural network: `.pt` file from embedding analysis (`three_layer_nn_pretrained.pt`)
-   - Logistic regression: `.pkl` file
+| Argument | Default | Description |
+| -------- | ------- | ----------- |
+| `--input_csv` | (required) | CSV file with a `sequence` column (and optionally `label`) |
+| `--model_path` | (required) | Path to pretrained megaDNA checkpoint (.pt file) |
+| `--classifier_path` | (required) | Path to `three_layer_nn_pretrained.pt` from Step 1 |
+| `--scaler_path` | (required) | Path to `three_layer_nn_pretrained_scaler.pkl` from Step 1 |
+| `--output_csv` | auto | Output path (default: `<input>_predictions.csv`) |
+| `--layer` | `middle` | Embedding layer (must match Step 1) |
+| `--pooling` | `mean` | Pooling strategy (must match Step 1) |
+| `--batch_size` | 8 | Batch size for embedding extraction |
+| `--max_length` | 96000 | Max sequence length in bp |
+| `--threshold` | 0.5 | Classification threshold for prob_1 |
+| `--save_metrics` | off | Save metrics to JSON (requires `label` column in input) |
 
-### Input Format
+**Output CSV columns:**
 
-CSV file with at least a `sequence` column. If `label` column is present, metrics will be computed.
+| Column | Description |
+| ------ | ----------- |
+| `sequence` | Original DNA sequence |
+| `label` | Original label (if present in input) |
+| `prob_0` | Probability of class 0 |
+| `prob_1` | Probability of class 1 |
+| `pred_label` | Predicted label |
 
-```csv
-sequence,label
-ACGTACGTACGT...,0
-TGCATGCATGCA...,1
-```
+If `--save_metrics` is used and labels are present, a `_metrics.json` file is also saved with accuracy, precision, recall, F1, MCC, AUC, sensitivity, and specificity.
 
-### Output Format
+---
 
-CSV file with predictions and probabilities:
-- `sequence`: Original sequence
-- `label`: Original label (if present)
-- `prob_0`: Probability of class 0
-- `prob_1`: Probability of class 1
-- `pred_label`: Predicted label
+### SLURM Scripts (for HPC)
 
-If `--save_metrics` is specified and labels are present, a `_metrics.json` file is also saved.
-
-### SLURM Scripts for Inference
+SLURM scripts are provided in `slurm_scripts/` for running on HPC clusters:
 
 ```bash
-# 1. Edit configuration in slurm_scripts/wrapper_run_inference.sh
-# 2. Submit job:
-bash slurm_scripts/wrapper_run_inference.sh
+# Embedding analysis
+# 1. Edit configuration in slurm_scripts/wrapper_run_embedding_analysis.sh
+# 2. Submit:
+bash slurm_scripts/wrapper_run_embedding_analysis.sh
+# Or run interactively:
+bash slurm_scripts/run_embedding_analysis_interactive.sh
 
-# For interactive testing (no sbatch):
+# Inference
+# 1. Edit configuration in slurm_scripts/wrapper_run_inference.sh
+# 2. Submit:
+bash slurm_scripts/wrapper_run_inference.sh
+# Or run interactively:
 bash slurm_scripts/run_inference_interactive.sh
 ```
 

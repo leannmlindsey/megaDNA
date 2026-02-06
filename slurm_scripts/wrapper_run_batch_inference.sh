@@ -22,19 +22,14 @@ INPUT_LIST="/path/to/input_files.txt"
 # All predictions and SLURM logs will be saved here
 OUTPUT_DIR="/path/to/output_directory"
 
-# === REQUIRED: Model Configuration ===
-# Path to megaDNA model checkpoint (.pt file)
-MODEL_PATH="/path/to/megaDNA_phage_145M.pt"
-
-# === REQUIRED: Classifier Configuration ===
-# Path to trained classifier (.pt for neural network, .pkl for logistic regression)
-CLASSIFIER_PATH="/path/to/classifier.pt"
+# === REQUIRED: Fine-tuned Model ===
+# Path to fine-tuned megaDNA model checkpoint (.pt file)
+# This should contain the full model (backbone + classification head)
+MODEL_PATH="/path/to/finetuned_model.pt"
 
 # === OPTIONAL: Inference Parameters ===
 BATCH_SIZE="8"
 MAX_LENGTH="96000"
-POOLING="mean"
-LAYER="middle"
 THRESHOLD="0.5"
 
 #####################################################################
@@ -52,13 +47,8 @@ if [ "${OUTPUT_DIR}" == "/path/to/output_directory" ]; then
     exit 1
 fi
 
-if [ "${MODEL_PATH}" == "/path/to/megaDNA_phage_145M.pt" ]; then
-    echo "ERROR: Please set MODEL_PATH to your megaDNA model checkpoint"
-    exit 1
-fi
-
-if [ "${CLASSIFIER_PATH}" == "/path/to/classifier.pt" ]; then
-    echo "ERROR: Please set CLASSIFIER_PATH to your trained classifier"
+if [ "${MODEL_PATH}" == "/path/to/finetuned_model.pt" ]; then
+    echo "ERROR: Please set MODEL_PATH to your fine-tuned model checkpoint"
     exit 1
 fi
 
@@ -73,11 +63,6 @@ if [ ! -f "${MODEL_PATH}" ]; then
     exit 1
 fi
 
-if [ ! -f "${CLASSIFIER_PATH}" ]; then
-    echo "ERROR: Classifier file not found: ${CLASSIFIER_PATH}"
-    exit 1
-fi
-
 # Get script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
@@ -88,14 +73,11 @@ echo "Input list: ${INPUT_LIST}"
 echo "Output dir: ${OUTPUT_DIR}"
 echo ""
 echo "Model Configuration:"
-echo "  megaDNA Model: ${MODEL_PATH}"
-echo "  Classifier: ${CLASSIFIER_PATH}"
+echo "  Fine-tuned Model: ${MODEL_PATH}"
 echo ""
 echo "Inference Parameters:"
 echo "  Batch size: ${BATCH_SIZE}"
 echo "  Max length: ${MAX_LENGTH}"
-echo "  Pooling: ${POOLING}"
-echo "  Layer: ${LAYER}"
 echo "  Threshold: ${THRESHOLD}"
 echo "=========================================="
 
@@ -104,9 +86,6 @@ echo "=========================================="
     --input_list "${INPUT_LIST}" \
     --output_dir "${OUTPUT_DIR}" \
     --model_path "${MODEL_PATH}" \
-    --classifier_path "${CLASSIFIER_PATH}" \
     --batch_size "${BATCH_SIZE}" \
     --max_length "${MAX_LENGTH}" \
-    --pooling "${POOLING}" \
-    --layer "${LAYER}" \
     --threshold "${THRESHOLD}"
