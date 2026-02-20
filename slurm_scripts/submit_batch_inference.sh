@@ -19,6 +19,8 @@ set -e
 BATCH_SIZE=8
 MAX_LENGTH=96000
 THRESHOLD=0.5
+LAYER="middle"
+POOLING="mean"
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -47,15 +49,35 @@ while [[ $# -gt 0 ]]; do
             THRESHOLD="$2"
             shift 2
             ;;
+        --classifier_path)
+            CLASSIFIER_PATH="$2"
+            shift 2
+            ;;
+        --scaler_path)
+            SCALER_PATH="$2"
+            shift 2
+            ;;
+        --layer)
+            LAYER="$2"
+            shift 2
+            ;;
+        --pooling)
+            POOLING="$2"
+            shift 2
+            ;;
         --help|-h)
             echo "Usage: $0 [OPTIONS]"
             echo ""
             echo "Required arguments:"
             echo "  --input_list FILE       Text file with one input CSV path per line"
             echo "  --output_dir DIR        Directory to store all output files"
-            echo "  --model_path PATH       Path to fine-tuned megaDNA model checkpoint (.pt file)"
+            echo "  --model_path PATH       Path to pretrained megaDNA backbone (.pt file)"
+            echo "  --classifier_path PATH  Path to trained 3-layer NN checkpoint"
+            echo "  --scaler_path PATH      Path to saved StandardScaler (.pkl file)"
             echo ""
             echo "Optional arguments:"
+            echo "  --layer LAYER           Embedding layer: local, middle, global, all (default: middle)"
+            echo "  --pooling POOLING       Pooling strategy: mean, max, cls (default: mean)"
             echo "  --batch_size N          Batch size for inference (default: 8)"
             echo "  --max_length N          Maximum sequence length (default: 96000)"
             echo "  --threshold F           Classification threshold (default: 0.5)"
@@ -89,6 +111,18 @@ if [ -z "${MODEL_PATH}" ]; then
     exit 1
 fi
 
+if [ -z "${CLASSIFIER_PATH}" ]; then
+    echo "ERROR: --classifier_path is required"
+    echo "Use --help for usage information"
+    exit 1
+fi
+
+if [ -z "${SCALER_PATH}" ]; then
+    echo "ERROR: --scaler_path is required"
+    echo "Use --help for usage information"
+    exit 1
+fi
+
 # Validate input list file exists
 if [ ! -f "${INPUT_LIST}" ]; then
     echo "ERROR: Input list file not found: ${INPUT_LIST}"
@@ -113,6 +147,10 @@ echo "============================================================"
 echo "Input list:      ${INPUT_LIST}"
 echo "Output dir:      ${OUTPUT_DIR}"
 echo "Model path:      ${MODEL_PATH}"
+echo "Classifier:      ${CLASSIFIER_PATH}"
+echo "Scaler:          ${SCALER_PATH}"
+echo "Layer:           ${LAYER}"
+echo "Pooling:         ${POOLING}"
 echo "Batch size:      ${BATCH_SIZE}"
 echo "Max length:      ${MAX_LENGTH}"
 echo "Threshold:       ${THRESHOLD}"
@@ -156,7 +194,7 @@ while IFS= read -r INPUT_CSV || [ -n "${INPUT_CSV}" ]; do
         --job-name="megadna_inf_${INPUT_BASENAME}" \
         --output="${OUTPUT_DIR}/slurm_${INPUT_BASENAME}_%j.out" \
         --error="${OUTPUT_DIR}/slurm_${INPUT_BASENAME}_%j.err" \
-        --export=ALL,INPUT_CSV="${INPUT_CSV}",OUTPUT_CSV="${OUTPUT_CSV}",MODEL_PATH="${MODEL_PATH}",BATCH_SIZE="${BATCH_SIZE}",MAX_LENGTH="${MAX_LENGTH}",THRESHOLD="${THRESHOLD}" \
+        --export=ALL,INPUT_CSV="${INPUT_CSV}",OUTPUT_CSV="${OUTPUT_CSV}",MODEL_PATH="${MODEL_PATH}",CLASSIFIER_PATH="${CLASSIFIER_PATH}",SCALER_PATH="${SCALER_PATH}",LAYER="${LAYER}",POOLING="${POOLING}",BATCH_SIZE="${BATCH_SIZE}",MAX_LENGTH="${MAX_LENGTH}",THRESHOLD="${THRESHOLD}" \
         "${INFERENCE_SCRIPT}" | awk '{print $NF}')
 
     echo "  Job ID: ${JOB_ID}"

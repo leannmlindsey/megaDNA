@@ -60,6 +60,8 @@ echo ""
 BATCH_SIZE=${BATCH_SIZE:-8}
 MAX_LENGTH=${MAX_LENGTH:-96000}
 THRESHOLD=${THRESHOLD:-0.5}
+LAYER=${LAYER:-middle}
+POOLING=${POOLING:-mean}
 
 # Validate required parameters
 if [ -z "${INPUT_CSV}" ]; then
@@ -69,6 +71,16 @@ fi
 
 if [ -z "${MODEL_PATH}" ]; then
     echo "ERROR: MODEL_PATH is not set"
+    exit 1
+fi
+
+if [ -z "${CLASSIFIER_PATH}" ]; then
+    echo "ERROR: CLASSIFIER_PATH is not set"
+    exit 1
+fi
+
+if [ -z "${SCALER_PATH}" ]; then
+    echo "ERROR: SCALER_PATH is not set"
     exit 1
 fi
 
@@ -86,9 +98,13 @@ echo ""
 echo "============================================================"
 echo "Configuration:"
 echo "============================================================"
-echo "  Fine-tuned Model: ${MODEL_PATH}"
+echo "  Pretrained Model: ${MODEL_PATH}"
+echo "  Classifier: ${CLASSIFIER_PATH}"
+echo "  Scaler: ${SCALER_PATH}"
 echo "  Input CSV: ${INPUT_CSV}"
 echo "  Output CSV: ${OUTPUT_CSV}"
+echo "  Layer: ${LAYER}"
+echo "  Pooling: ${POOLING}"
 echo "  Batch size: ${BATCH_SIZE}"
 echo "  Max length: ${MAX_LENGTH}"
 echo "  Threshold: ${THRESHOLD}"
@@ -99,7 +115,11 @@ echo ""
 python inference_megadna.py \
     --input_csv="${INPUT_CSV}" \
     --model_path="${MODEL_PATH}" \
+    --classifier_path="${CLASSIFIER_PATH}" \
+    --scaler_path="${SCALER_PATH}" \
     --output_csv="${OUTPUT_CSV}" \
+    --layer="${LAYER}" \
+    --pooling="${POOLING}" \
     --batch_size=${BATCH_SIZE} \
     --max_length=${MAX_LENGTH} \
     --threshold=${THRESHOLD} \

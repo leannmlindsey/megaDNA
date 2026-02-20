@@ -22,10 +22,19 @@ INPUT_LIST="/path/to/input_files.txt"
 # All predictions and SLURM logs will be saved here
 OUTPUT_DIR="/path/to/output_directory"
 
-# === REQUIRED: Fine-tuned Model ===
-# Path to fine-tuned megaDNA model checkpoint (.pt file)
-# This should contain the full model (backbone + classification head)
-MODEL_PATH="/path/to/finetuned_model.pt"
+# === REQUIRED: Pretrained megaDNA backbone ===
+# Path to pretrained megaDNA model checkpoint (.pt file)
+MODEL_PATH="/path/to/megaDNA_model.pt"
+
+# === REQUIRED: Classifier and Scaler ===
+# Path to trained 3-layer NN checkpoint (from embedding_analysis_megadna.py)
+CLASSIFIER_PATH="/path/to/three_layer_nn_pretrained.pt"
+# Path to saved StandardScaler (from embedding_analysis_megadna.py)
+SCALER_PATH="/path/to/three_layer_nn_pretrained_scaler.pkl"
+
+# === OPTIONAL: Embedding Parameters ===
+LAYER="middle"
+POOLING="mean"
 
 # === OPTIONAL: Inference Parameters ===
 BATCH_SIZE="8"
@@ -47,8 +56,18 @@ if [ "${OUTPUT_DIR}" == "/path/to/output_directory" ]; then
     exit 1
 fi
 
-if [ "${MODEL_PATH}" == "/path/to/finetuned_model.pt" ]; then
-    echo "ERROR: Please set MODEL_PATH to your fine-tuned model checkpoint"
+if [ "${MODEL_PATH}" == "/path/to/megaDNA_model.pt" ]; then
+    echo "ERROR: Please set MODEL_PATH to your pretrained megaDNA backbone"
+    exit 1
+fi
+
+if [ "${CLASSIFIER_PATH}" == "/path/to/three_layer_nn_pretrained.pt" ]; then
+    echo "ERROR: Please set CLASSIFIER_PATH to your trained classifier checkpoint"
+    exit 1
+fi
+
+if [ "${SCALER_PATH}" == "/path/to/three_layer_nn_pretrained_scaler.pkl" ]; then
+    echo "ERROR: Please set SCALER_PATH to your saved scaler"
     exit 1
 fi
 
@@ -63,6 +82,16 @@ if [ ! -f "${MODEL_PATH}" ]; then
     exit 1
 fi
 
+if [ ! -f "${CLASSIFIER_PATH}" ]; then
+    echo "ERROR: Classifier file not found: ${CLASSIFIER_PATH}"
+    exit 1
+fi
+
+if [ ! -f "${SCALER_PATH}" ]; then
+    echo "ERROR: Scaler file not found: ${SCALER_PATH}"
+    exit 1
+fi
+
 # Get script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
@@ -73,12 +102,16 @@ echo "Input list: ${INPUT_LIST}"
 echo "Output dir: ${OUTPUT_DIR}"
 echo ""
 echo "Model Configuration:"
-echo "  Fine-tuned Model: ${MODEL_PATH}"
+echo "  Pretrained Model: ${MODEL_PATH}"
+echo "  Classifier: ${CLASSIFIER_PATH}"
+echo "  Scaler: ${SCALER_PATH}"
 echo ""
 echo "Inference Parameters:"
+echo "  Layer:      ${LAYER}"
+echo "  Pooling:    ${POOLING}"
 echo "  Batch size: ${BATCH_SIZE}"
 echo "  Max length: ${MAX_LENGTH}"
-echo "  Threshold: ${THRESHOLD}"
+echo "  Threshold:  ${THRESHOLD}"
 echo "=========================================="
 
 # Call the batch submission script
@@ -86,6 +119,10 @@ echo "=========================================="
     --input_list "${INPUT_LIST}" \
     --output_dir "${OUTPUT_DIR}" \
     --model_path "${MODEL_PATH}" \
+    --classifier_path "${CLASSIFIER_PATH}" \
+    --scaler_path "${SCALER_PATH}" \
+    --layer "${LAYER}" \
+    --pooling "${POOLING}" \
     --batch_size "${BATCH_SIZE}" \
     --max_length "${MAX_LENGTH}" \
     --threshold "${THRESHOLD}"

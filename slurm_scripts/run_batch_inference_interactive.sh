@@ -70,8 +70,18 @@ if [ "${OUTPUT_DIR}" == "/path/to/output_directory" ] || [ -z "${OUTPUT_DIR}" ];
     exit 1
 fi
 
-if [ "${MODEL_PATH}" == "/path/to/finetuned_model.pt" ] || [ -z "${MODEL_PATH}" ]; then
+if [ "${MODEL_PATH}" == "/path/to/megaDNA_model.pt" ] || [ -z "${MODEL_PATH}" ]; then
     echo "ERROR: MODEL_PATH is not set properly in wrapper"
+    exit 1
+fi
+
+if [ "${CLASSIFIER_PATH}" == "/path/to/three_layer_nn_pretrained.pt" ] || [ -z "${CLASSIFIER_PATH}" ]; then
+    echo "ERROR: CLASSIFIER_PATH is not set properly in wrapper"
+    exit 1
+fi
+
+if [ "${SCALER_PATH}" == "/path/to/three_layer_nn_pretrained_scaler.pkl" ] || [ -z "${SCALER_PATH}" ]; then
+    echo "ERROR: SCALER_PATH is not set properly in wrapper"
     exit 1
 fi
 
@@ -88,6 +98,8 @@ mkdir -p "${OUTPUT_DIR}"
 BATCH_SIZE=${BATCH_SIZE:-8}
 MAX_LENGTH=${MAX_LENGTH:-96000}
 THRESHOLD=${THRESHOLD:-0.5}
+LAYER=${LAYER:-middle}
+POOLING=${POOLING:-mean}
 
 echo ""
 echo "============================================================"
@@ -95,7 +107,11 @@ echo "Configuration:"
 echo "============================================================"
 echo "  Input list: ${INPUT_LIST}"
 echo "  Output dir: ${OUTPUT_DIR}"
-echo "  Fine-tuned Model: ${MODEL_PATH}"
+echo "  Pretrained Model: ${MODEL_PATH}"
+echo "  Classifier: ${CLASSIFIER_PATH}"
+echo "  Scaler: ${SCALER_PATH}"
+echo "  Layer: ${LAYER}"
+echo "  Pooling: ${POOLING}"
 echo "  Batch size: ${BATCH_SIZE}"
 echo "  Max length: ${MAX_LENGTH}"
 echo "  Threshold: ${THRESHOLD}"
@@ -137,7 +153,11 @@ while IFS= read -r INPUT_CSV || [ -n "${INPUT_CSV}" ]; do
     python inference_megadna.py \
         --input_csv="${INPUT_CSV}" \
         --model_path="${MODEL_PATH}" \
+        --classifier_path="${CLASSIFIER_PATH}" \
+        --scaler_path="${SCALER_PATH}" \
         --output_csv="${OUTPUT_CSV}" \
+        --layer="${LAYER}" \
+        --pooling="${POOLING}" \
         --batch_size=${BATCH_SIZE} \
         --max_length=${MAX_LENGTH} \
         --threshold=${THRESHOLD} \
