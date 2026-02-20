@@ -1,0 +1,4 @@
+/home/lindseylm/lindseylm/lambda_final/merged_datasets_filtered/8k/test.csv
+/home/lindseylm/lindseylm/lambda_final/shuffled_gc_control/gc_control_8k_test.csv
+/home/lindseylm/lindseylm/lambda_final/bacteria_cds_benchmark/bacterial_cds_8k.csv
+/home/lindseylm/lindseylm/lambda_final/phage_only_annotations/segments/phage_segments_8k_4k.csv

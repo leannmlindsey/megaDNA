@@ -18,11 +18,14 @@ SEED=${1:-42}  # Default seed is 42 if not provided
 source activate megadna
 
 # Set paths
-DATA_DIR="/home/lindseylm/lindseylm/lambda_final/merged_datasets_filtered/2k"
-MODEL_PATH="megaDNA_phage_145M.pt"  # Update this path to where you put the model
+DATA_DIR="/home/lindseylm/lindseylm/lambda_final/merged_datasets_filtered/4k"
+MODEL_PATH="/data/lindseylm/GLM_EVALUATIONS/MODELS/MEGADNA/megaDNA/megaDNA_phage_145M.pt"  # Update this path to where you put the model
 f="filtered"
-len="2k"
-OUTPUT_DIR="./output/lambda_filtered/2k/megaDNA_lambda_${f}_${len}_seed${SEED}_$(date +%Y%m%d_%H%M%S)"
+len="4k"
+#OUTPUT_DIR="./output/lambda_filtered/2k/megaDNA_lambda_${f}_${len}_seed${SEED}_$(date +%Y%m%d_%H%M%S)"
+OUTPUT_DIR="/data/lindseylm/GLM_EVALUATIONS/MODELS/FINAL_RESULTS/MEGADNA/output/lambda_filtered/${len}/megaDNA_lambda_${f}_${len}_seed${SEED}_$(date +%Y%m%d_%H%M%S)"
+SCRIPT_DIR="/data/lindseylm/GLM_EVALUATIONS/MODELS/MEGADNA/megaDNA"
+cd $SCRIPT_DIR
 
 # Create output directory
 mkdir -p $OUTPUT_DIR
@@ -30,7 +33,7 @@ mkdir -p $OUTPUT_DIR
 # Run classification with improved 3-layer neural network
 echo "Running embedding classifier with Improved 3-Layer Neural Network..."
 echo "Using seed: $SEED"
-python run_embedding_classifier.py \
+python $SCRIPT_DIR/run_embedding_classifier.py \
     --data_dir $DATA_DIR \
     --model_path $MODEL_PATH \
     --classifier_type neural \

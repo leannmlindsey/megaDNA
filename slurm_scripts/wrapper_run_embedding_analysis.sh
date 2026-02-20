@@ -15,19 +15,19 @@
 
 # === REQUIRED: Dataset Configuration ===
 # Path to directory containing train.csv, dev.csv (or val.csv), test.csv
-export CSV_DIR="/path/to/your/csv/data"
+export CSV_DIR="/home/lindseylm/lindseylm/lambda_final/merged_datasets_filtered/4k"
 
 # === REQUIRED: Model Configuration ===
 # Path to megaDNA model checkpoint (.pt file)
 # Download from: https://huggingface.co/lingxusb/megaDNA_updated
-export MODEL_PATH="/path/to/megaDNA_phage_145M.pt"
+export MODEL_PATH="/gpfs/gsfs12/users/lindseylm/GLM_EVALUATIONS/MODELS/MEGADNA/megaDNA/megaDNA_phage_145M.pt"
 
 # === OPTIONAL: Output Directory ===
 # Leave empty to use default: ./results/embedding_analysis/$(basename $CSV_DIR)
-export OUTPUT_DIR=""
+export OUTPUT_DIR="/data/lindseylm/GLM_EVALUATIONS/MODELS/FINAL_RESULTS/MEGADNA/results/embedding_analysis/$(basename $CSV_DIR)"
 
 # === OPTIONAL: Hyperparameters ===
-export BATCH_SIZE="8"
+export BATCH_SIZE="32"
 export MAX_LENGTH="96000"          # megaDNA supports up to 96kb
 export POOLING="mean"              # Options: mean, max, cls
 export LAYER="middle"              # Options: local (196d), middle (256d), global (512d), all (concatenated)
@@ -40,7 +40,7 @@ export NN_LR="0.001"
 
 # === OPTIONAL: Include Random Baseline ===
 # Set to "true" to also run analysis on randomly initialized model for comparison
-export INCLUDE_RANDOM_BASELINE="false"
+export INCLUDE_RANDOM_BASELINE="true"
 
 #####################################################################
 # END CONFIGURATION
@@ -116,7 +116,8 @@ echo "Include random baseline: ${INCLUDE_RANDOM_BASELINE}"
 echo "=========================================="
 
 # Get script directory
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+SCRIPT_DIR="/data/lindseylm/GLM_EVALUATIONS/MODELS/MEGADNA/megaDNA/slurm_scripts"
+cd $SCRIPT_DIR
 
 # Submit job
 echo "Submitting job..."

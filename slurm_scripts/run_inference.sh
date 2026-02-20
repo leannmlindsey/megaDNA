@@ -72,7 +72,7 @@ if [ -z "${SCALER_PATH}" ]; then
 fi
 
 # Navigate to repo root
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+SCRIPT_DIR="/data/lindseylm/GLM_EVALUATIONS/MODELS/MEGADNA/megaDNA/slurm_scripts"
 cd "${SCRIPT_DIR}/.." || exit
 echo "Working directory: $(pwd)"
 

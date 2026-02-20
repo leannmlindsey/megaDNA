@@ -16,21 +16,31 @@
 #   /path/to/dataset1.csv
 #   /path/to/dataset2.csv
 #   /path/to/dataset3.csv
-INPUT_LIST="/path/to/input_files.txt"
+#INPUT_LIST="/data/lindseylm/GLM_EVALUATIONS/MODELS/MEGADNA/megaDNA/slurm_scripts/input_files.txt"
+#INPUT_LIST="/data/lindseylm/GLM_EVALUATIONS/MODELS/MEGADNA/megaDNA/slurm_scripts/genome_files_2k.txt"
+#INPUT_LIST="/data/lindseylm/GLM_EVALUATIONS/MODELS/MEGADNA/megaDNA/slurm_scripts/genome_files_4k.txt"
+INPUT_LIST="/data/lindseylm/GLM_EVALUATIONS/MODELS/MEGADNA/megaDNA/slurm_scripts/genome_files_8k.txt"
+#INPUT_LIST="/data/lindseylm/GLM_EVALUATIONS/MODELS/MEGADNA/megaDNA/slurm_scripts/inference_filepaths_2k.txt"
+#INPUT_LIST="/data/lindseylm/GLM_EVALUATIONS/MODELS/MEGADNA/megaDNA/slurm_scripts/inference_filepaths_4k.txt"
+#INPUT_LIST="/data/lindseylm/GLM_EVALUATIONS/MODELS/MEGADNA/megaDNA/slurm_scripts/inference_filepaths_8k.txt"
+#len="2k"
+#len="4k"
+len="8k"
 
 # === REQUIRED: Output Directory ===
 # All predictions and SLURM logs will be saved here
-OUTPUT_DIR="/path/to/output_directory"
+#OUTPUT_DIR="/data/lindseylm/GLM_EVALUATIONS/MODELS/MEGADNA/megaDNA/results/inference/error_and_bias/${len}"
+OUTPUT_DIR="/data/lindseylm/GLM_EVALUATIONS/MODELS/MEGADNA/megaDNA/results/inference/genome_wide/${len}"
 
 # === REQUIRED: Pretrained megaDNA backbone ===
 # Path to pretrained megaDNA model checkpoint (.pt file)
-MODEL_PATH="/path/to/megaDNA_model.pt"
+MODEL_PATH="/data/lindseylm/GLM_EVALUATIONS/MODELS/MEGADNA/megaDNA/megaDNA_phage_145M.pt"
 
 # === REQUIRED: Classifier and Scaler ===
 # Path to trained 3-layer NN checkpoint (from embedding_analysis_megadna.py)
-CLASSIFIER_PATH="/path/to/three_layer_nn_pretrained.pt"
+CLASSIFIER_PATH="/data/lindseylm/GLM_EVALUATIONS/MODELS/FINAL_RESULTS/MEGADNA/results/embedding_analysis/2k/three_layer_nn_pretrained.pt"
 # Path to saved StandardScaler (from embedding_analysis_megadna.py)
-SCALER_PATH="/path/to/three_layer_nn_pretrained_scaler.pkl"
+SCALER_PATH="/data/lindseylm/GLM_EVALUATIONS/MODELS/FINAL_RESULTS/MEGADNA/results/embedding_analysis/2k/three_layer_nn_pretrained_scaler.pkl"
 
 # === OPTIONAL: Embedding Parameters ===
 LAYER="middle"
@@ -93,8 +103,7 @@ if [ ! -f "${SCALER_PATH}" ]; then
 fi
 
 # Get script directory
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
+SCRIPT_DIR="/data/lindseylm/GLM_EVALUATIONS/MODELS/MEGADNA/megaDNA/slurm_scripts"
 echo "=========================================="
 echo "Submitting megaDNA Batch Inference Jobs"
 echo "=========================================="
