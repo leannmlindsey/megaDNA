@@ -33,16 +33,20 @@ echo "Started at: $(date)  Node: $(hostname)  Job: ${SLURM_JOB_ID:-N/A}"
 
 # Activate conda (bare style — no set -e; see conda-activate gotcha). The existing
 # megaDNA scripts intentionally do NOT set PYTHONNOUSERSITE — follow that.
-module load conda
 module load CUDA/12.8
+source /data/lindseylm/conda/etc/profile.d/conda.sh
 if [ -z "${CUDA_HOME}" ]; then
     NVCC_PATH=$(which nvcc 2>/dev/null)
     if [ -n "${NVCC_PATH}" ]; then
         export CUDA_HOME=$(dirname $(dirname "${NVCC_PATH}"))
     fi
 fi
-source activate "${CONDA_ENV:-megadna}"
-echo "  conda env: ${CONDA_DEFAULT_ENV:-<none>}   python: $(command -v python || echo none)"
+conda activate "${CONDA_ENV:-megadna}"
+if [ "${CONDA_DEFAULT_ENV}" != "${CONDA_ENV:-megadna}" ]; then
+    echo "ERROR: could not activate conda env '${CONDA_ENV:-megadna}' (active: '${CONDA_DEFAULT_ENV:-none}'). Aborting." >&2
+    exit 1
+fi
+echo "  conda env: ${CONDA_DEFAULT_ENV}   python: $(command -v python)"
 export CUDA_VISIBLE_DEVICES=0
 
 if [ -z "${REPO_ROOT:-}" ]; then
