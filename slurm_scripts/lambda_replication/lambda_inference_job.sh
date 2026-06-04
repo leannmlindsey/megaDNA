@@ -55,7 +55,8 @@ BATCH_SIZE=${BATCH_SIZE:-8}
 MAX_LENGTH=${MAX_LENGTH:-96000}
 THRESHOLD=${THRESHOLD:-0.5}
 
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# Locate the lambda_replication dir via the exported REPO_ROOT.
+SCRIPT_DIR="$(dirname "$(find "${REPO_ROOT}" -path '*lambda_replication/print_winner_exports.py' 2>/dev/null | head -1)")"
 WINNERS_JSON="${REPL_OUTPUT_DIR}/winners.json"
 if [ ! -f "${WINNERS_JSON}" ]; then
     echo "ERROR: ${WINNERS_JSON} not found (select_best_model must run first)"; exit 1
