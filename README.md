@@ -5,12 +5,23 @@
 Generative pre-trained transformers (GPTs) have revolutionized the field of natural language processing. Inspired by the success of large language models, we develop a long-context generative model for genomes. Our multiscale transformer model was pre-trained on unannotated bacteriophage genomes with byte-level tokenization. We demonstrate the foundational capabilities of our model including the prediction of essential genes, genetic variant effects, regulatory element activity and taxonomy of unannotated sequences. Furthermore, it generates de novo sequences up to 96K base pairs, which contain functional regulatory elements and novel proteins with phage-related functions.
 
 ### Install
-To install `megaDNA`, run the following bash script:
- ```bash
- git clone https://github.com/lingxusb/megaDNA.git
- cd megaDNA
- pip install .
- ```
+We recommend installing `megaDNA` into a dedicated conda environment to keep its
+dependencies isolated and reproducible:
+
+```bash
+git clone https://github.com/lingxusb/megaDNA.git
+cd megaDNA
+
+# Create and activate a dedicated environment
+conda create -n megadna python=3.10 -y
+conda activate megadna
+
+# Install megaDNA and its dependencies into the environment
+pip install .
+```
+
+To use the environment later, run `conda activate megadna` before any of the
+commands below. To remove it, run `conda remove -n megadna --all`.
 
 ### Trained model
 - The original model: [megaDNA_145M](https://huggingface.co/lingxusb/megaDNA_updated/tree/main).
