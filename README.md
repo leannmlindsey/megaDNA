@@ -253,6 +253,44 @@ bash slurm_scripts/run_inference_interactive.sh
 
 ---
 
+### LAMBDA paper replication (Delta-AI)
+
+The end-to-end pipeline that reproduces the LAMBDA paper surfaces for megaDNA
+(per-seed embedding analysis → best-seed selection → diagnostics + PHROG +
+genome-wide inference) lives in **`slurm_scripts/lambda_replication/`**. See its
+[README](slurm_scripts/lambda_replication/README.md) for the full walkthrough.
+
+**1. Environment (`megadna`) on a GH200 node:**
+```bash
+source /u/llindsey1/miniconda3/etc/profile.d/conda.sh
+conda create -y -n megadna python=3.10 && conda activate megadna
+pip install -r requirements.txt          # torch, einops, beartype, MEGABYTE_pytorch==0.2.1, sklearn, pandas, ...
+# if the MEGABYTE_pytorch==0.2.1 pin conflicts with the resolved torch:
+#   pip install torch && pip install MEGABYTE_pytorch==0.2.1 --no-deps
+python -c "import torch; print(torch.__version__, torch.cuda.is_available())"   # expect True on GH200
+```
+
+**2. Configure** `slurm_scripts/lambda_replication/lambda_replication.conf` for
+Delta (already adapted in this repo): `LAMBDA_BASE` / `OUTPUT_DIR` / `MODEL_PATH`
+under `/work/hdd/bfzj/llindsey1/LAMBDA_REPLICATION/...`; `CONDA_BASE` +
+`CONDA_ENV`; SLURM `--account=bfzj-dtai-gh --partition=ghx4 --gpus-per-node=1`;
+`FNR_<LEN>` set to the fixed-window files (`phage_segments_*`); `PHROG_2k` set to
+the annotated set (written as the canonical
+`megaDNA_phage_annotated_segments_2k_predictions.csv`); and
+`INCLUDE_RANDOM_BASELINE=true` (random-embedding baseline for the paper). Confirm
+the transferred `megaDNA_phage_145M.pt` path.
+
+**3. Run (login node submits sbatch jobs):**
+```bash
+bash slurm_scripts/lambda_replication/run_lambda_training.sh    # per-seed embedding analysis (2k/4k/8k)
+# wait for jobs (squeue -u $USER), then:
+bash slurm_scripts/lambda_replication/check_training.sh
+bash slurm_scripts/lambda_replication/run_lambda_inference.sh   # winners + diagnostics + PHROG + genome-wide
+bash slurm_scripts/lambda_replication/check_inference.sh
+```
+
+---
+
 ### Reference
 - [A long-context language model for deciphering and generating bacteriophage genomes](https://www.biorxiv.org/content/10.1101/2023.12.18.572218v3)
 - [MEGABYTE: Predicting Million-byte Sequences with Multiscale Transformers](https://arxiv.org/abs/2305.07185)
