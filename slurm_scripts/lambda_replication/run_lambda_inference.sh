@@ -30,9 +30,10 @@
 #   bash slurm_scripts/lambda_replication/run_lambda_inference.sh
 
 
-# Absolute path to this lambda_replication dir on Biowulf (hardcoded so it is
-# correct no matter what directory the script is launched/submitted from).
-SCRIPT_DIR="/vf/users/lindseylm/GLM_EVALUATIONS/NAR_GENOMICS_LAMBDA_REPO/megaDNA/slurm_scripts/lambda_replication"
+# This lambda_replication dir, resolved from the launcher's own location so it is
+# correct no matter where the repo is cloned (login-node launcher; the sbatch job
+# bodies get REPO_ROOT via --export, see below).
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 REPO_ROOT="$( cd "${SCRIPT_DIR}/../.." && pwd )"
 CONFIG="${SCRIPT_DIR}/lambda_replication.conf"
 
@@ -76,7 +77,7 @@ LOGDIR="${OUTPUT_DIR}/logs"
 
 # --- common sbatch flags ------------------------------------------------------
 
-INF_FLAGS=(--partition=gpu --gres=gpu:a100:1 --mem="${INF_MEM}" --time="${INF_TIME}" --cpus-per-task=8)
+INF_FLAGS=(--account="${SLURM_ACCOUNT}" --partition="${SLURM_PARTITION}" ${SLURM_GPUS} --mem="${INF_MEM}" --time="${INF_TIME}" --cpus-per-task=8)
 
 echo "============================================================"
 echo "megaDNA LAMBDA replication — Stage 2: winners + inference"
@@ -192,6 +193,31 @@ for LEN in ${RUN_LENGTHS}; do
                 "${SCRIPT_DIR}/lambda_inference_job.sh"
             NUM_JOBS=$((NUM_JOBS + 1))
         done
+
+        # PHROG annotated set (Surface D) — phrog-annotated phage subset, 2k only
+        # (PHROG_<LEN>, only PHROG_2k is defined). Written with the model-prefixed
+        # CANONICAL name megaDNA_<stem>_predictions.csv that the central PHROG
+        # table script globs for. inference_megadna.py copies all input columns,
+        # so phrog_category / phrog_db_category pass straight through.
+        phrog_var="PHROG_${LEN}"
+        PHROG_PATH="${!phrog_var:-}"
+        if [ -n "${PHROG_PATH}" ]; then
+            if [ -f "${PHROG_PATH}" ]; then
+                stem=$(basename "${PHROG_PATH}" .csv)
+                JOB="phroginf_${LEN}_${VARIANT}_${stem}"
+                echo "    submitting ${JOB}..."
+                sbatch \
+                    --job-name="${JOB}" \
+                    --output="${LOGDIR}/${JOB}_%j.out" \
+                    --error="${LOGDIR}/${JOB}_%j.err" \
+                    "${INF_FLAGS[@]}" \
+                    --export="ALL,${INF_ENV},INPUT_CSV=${PHROG_PATH},OUTPUT_FILENAME=megaDNA_${stem}_predictions.csv" \
+                    "${SCRIPT_DIR}/lambda_inference_job.sh"
+                NUM_JOBS=$((NUM_JOBS + 1))
+            else
+                echo "    WARNING: ${phrog_var}=${PHROG_PATH} not found — skipping PHROG for ${LEN}"
+            fi
+        fi
 
         # Genome-wide inference (Surface C) — one job per CSV. No aggregate
         # clustering job: genome-level analysis is centralized in harvest.

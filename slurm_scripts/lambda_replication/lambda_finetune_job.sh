@@ -33,8 +33,11 @@ echo "Started at: $(date)  Node: $(hostname)  Job: ${SLURM_JOB_ID:-N/A}"
 
 # Activate conda (bare style — no set -e; see conda-activate gotcha). The existing
 # megaDNA scripts intentionally do NOT set PYTHONNOUSERSITE — follow that.
-module load CUDA/12.8
-source /data/lindseylm/conda/etc/profile.d/conda.sh
+# Delta-AI: torch is installed from the aarch64 CUDA wheel (bundles its own CUDA
+# runtime), so no system CUDA module is required. The module load below is a
+# best-effort no-op if the module is absent.
+module load cuda 2>/dev/null || true
+source "${CONDA_BASE:-/u/llindsey1/miniconda3}/etc/profile.d/conda.sh"
 if [ -z "${CUDA_HOME}" ]; then
     NVCC_PATH=$(which nvcc 2>/dev/null)
     if [ -n "${NVCC_PATH}" ]; then

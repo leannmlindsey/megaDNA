@@ -19,9 +19,9 @@
 #
 # Run this after run_lambda_inference.sh and squeue shows the jobs done.
 
-# Absolute path to this lambda_replication dir on Biowulf (hardcoded so it is
-# correct no matter what directory the script is launched/submitted from).
-SCRIPT_DIR="/vf/users/lindseylm/GLM_EVALUATIONS/NAR_GENOMICS_LAMBDA_REPO/megaDNA/slurm_scripts/lambda_replication"
+# This lambda_replication dir, resolved from this script's own location so it is
+# correct no matter where the repo is cloned.
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 CONFIG="${SCRIPT_DIR}/lambda_replication.conf"
 
 if [ ! -f "${CONFIG}" ]; then
@@ -125,6 +125,30 @@ for LEN in ${RUN_LENGTHS}; do
             fi
         done
 
+        # PHROG annotated set (2k only) — canonical model-prefixed name; confirm
+        # the phrog_db_category column survived inference (the table needs it).
+        phrog_var="PHROG_${LEN}"
+        PHROG_PATH="${!phrog_var:-}"
+        if [ -n "${PHROG_PATH}" ] && [ -f "${PHROG_PATH}" ]; then
+            stem=$(basename "${PHROG_PATH}" .csv)
+            PCSV="${INF_DIR}/megaDNA_${stem}_predictions.csv"
+            PJSON="${INF_DIR}/megaDNA_${stem}_predictions_metrics.json"
+            if [ -f "${PCSV}" ]; then
+                if head -1 "${PCSV}" | grep -q "phrog_db_category"; then
+                    HASCAT="phrog_db_category ok"
+                else
+                    HASCAT="phrog_db_category MISSING"
+                fi
+                if [ -f "${PJSON}" ]; then
+                    printf "    %-10s ok   %s  [%s]\n" "phrog" "$(metrics_line "${PJSON}")" "${HASCAT}"
+                else
+                    printf "    %-10s ok   (no _metrics.json)  [%s]\n" "phrog" "${HASCAT}"
+                fi
+            else
+                printf "    %-10s MISSING (%s)\n" "phrog" "megaDNA_${stem}_predictions.csv"
+            fi
+        fi
+
         # genome-wide
         if [ "${GW_EXPECTED}" -gt 0 ]; then
             shopt -s nullglob
@@ -144,7 +168,7 @@ done
 
 echo ""
 echo "=== non-empty .err files (potential failures) ==="
-ERRS=$(find "${LOGDIR}" \( -name "inf_*.err" -o -name "gwinf_*.err" \) -size +0c -printf "%s  %p\n" 2>/dev/null | sort -rn)
+ERRS=$(find "${LOGDIR}" \( -name "inf_*.err" -o -name "gwinf_*.err" -o -name "phroginf_*.err" \) -size +0c -printf "%s  %p\n" 2>/dev/null | sort -rn)
 if [ -n "${ERRS}" ]; then
     echo "${ERRS}"
 else

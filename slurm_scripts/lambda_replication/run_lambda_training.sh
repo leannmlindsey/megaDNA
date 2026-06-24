@@ -16,9 +16,10 @@
 #   4. bash slurm_scripts/lambda_replication/run_lambda_inference.sh
 
 
-# Absolute path to this lambda_replication dir on Biowulf (hardcoded so it is
-# correct no matter what directory the script is launched/submitted from).
-SCRIPT_DIR="/vf/users/lindseylm/GLM_EVALUATIONS/NAR_GENOMICS_LAMBDA_REPO/megaDNA/slurm_scripts/lambda_replication"
+# This lambda_replication dir, resolved from the launcher's own location so it is
+# correct no matter where the repo is cloned (login-node launcher; the sbatch job
+# bodies get REPO_ROOT via --export, see below).
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # REPO_ROOT is the repo root (holds embedding_analysis_megadna.py,
 # inference_megadna.py). slurm_scripts/lambda_replication -> ../.. == root.
 REPO_ROOT="$( cd "${SCRIPT_DIR}/../.." && pwd )"
@@ -90,7 +91,7 @@ echo "============================================================"
 
 # --- common sbatch flags ------------------------------------------------------
 
-FT_FLAGS=(--partition=gpu --gres=gpu:a100:1 --mem="${FT_MEM}" --time="${FT_TIME}" --cpus-per-task=8)
+FT_FLAGS=(--account="${SLURM_ACCOUNT}" --partition="${SLURM_PARTITION}" ${SLURM_GPUS} --mem="${FT_MEM}" --time="${FT_TIME}" --cpus-per-task=8)
 
 # REPO_ROOT is propagated to every job so they can cd to the real repo — SLURM
 # stages each job script to /var/spool/slurm/... where BASH_SOURCE[0] can't

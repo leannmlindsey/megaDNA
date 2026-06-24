@@ -16,9 +16,9 @@
 #
 # Run this after run_lambda_training.sh and before run_lambda_inference.sh.
 
-# Absolute path to this lambda_replication dir on Biowulf (hardcoded so it is
-# correct no matter what directory the script is launched/submitted from).
-SCRIPT_DIR="/vf/users/lindseylm/GLM_EVALUATIONS/NAR_GENOMICS_LAMBDA_REPO/megaDNA/slurm_scripts/lambda_replication"
+# This lambda_replication dir, resolved from this script's own location so it is
+# correct no matter where the repo is cloned.
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 CONFIG="${SCRIPT_DIR}/lambda_replication.conf"
 
 if [ ! -f "${CONFIG}" ]; then
