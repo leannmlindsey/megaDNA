@@ -4,6 +4,13 @@
 
 Generative pre-trained transformers (GPTs) have revolutionized the field of natural language processing. Inspired by the success of large language models, we develop a long-context generative model for genomes. Our multiscale transformer model was pre-trained on unannotated bacteriophage genomes with byte-level tokenization. We demonstrate the foundational capabilities of our model including the prediction of essential genes, genetic variant effects, regulatory element activity and taxonomy of unannotated sequences. Furthermore, it generates de novo sequences up to 96K base pairs, which contain functional regulatory elements and novel proteins with phage-related functions.
 
+## Explore the Results
+
+See how megaDNA performs on the full LAMBDA genome-wide evaluation set, and compare it
+interactively against every other benchmarked model, on the LAMBDA benchmark dashboard:
+
+[https://leannmlindsey.github.io/lambda-benchmark/](https://leannmlindsey.github.io/lambda-benchmark/)
+
 ### Install
 We recommend installing `megaDNA` into a dedicated conda environment to keep its
 dependencies isolated and reproducible:

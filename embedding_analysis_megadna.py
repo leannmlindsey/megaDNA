@@ -414,7 +414,10 @@ def train_linear_probe(
         "test_preds": test_preds,
         "test_probs": test_probs,
     }
-    return metrics, predictions
+    # Also return the fitted classifier + scaler so the caller can save them as
+    # linear_probe_pretrained.pkl (needed to deploy the linear probe genome-wide,
+    # mirroring three_layer_nn_pretrained.pt). Previously only the NN was saved.
+    return metrics, predictions, clf, scaler
 
 
 def calculate_silhouette(
@@ -706,7 +709,7 @@ def run_analysis_on_embeddings(
     results = {}
 
     # 1. Train linear probe
-    linear_metrics, linear_preds = train_linear_probe(
+    linear_metrics, linear_preds, linear_clf, linear_scaler = train_linear_probe(
         train_embeddings, train_labels,
         test_embeddings, test_labels,
         seed,
@@ -762,6 +765,15 @@ def run_analysis_on_embeddings(
     with open(nn_scaler_path, "wb") as f:
         pickle.dump(nn_scaler, f)
     print(f"Saved NN scaler to: {nn_scaler_path}")
+
+    # Save the linear probe (classifier + its StandardScaler) so it can be
+    # deployed genome-wide, mirroring linear_probe_pretrained.pkl in the other
+    # repos. Bundle format matches genome_wide_all_heads_*.py's loader:
+    #   {"classifier": LogisticRegression, "scaler": StandardScaler}
+    lp_path = os.path.join(output_dir, f"linear_probe_{prefix}.pkl")
+    with open(lp_path, "wb") as f:
+        pickle.dump({"classifier": linear_clf, "scaler": linear_scaler}, f)
+    print(f"Saved linear probe to: {lp_path}")
 
     return results
 
